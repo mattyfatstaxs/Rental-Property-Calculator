@@ -1,0 +1,72 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+st.set_page_config(page_title="Rental Property Calculator", layout="wide")
+
+st.title("🏠 Rental Property Investment Calculator")
+
+# Sidebar inputs
+st.sidebar.header("🔢 Property and Loan Details")
+purchase_price = st.sidebar.number_input("Purchase Price ($)", value=160000)
+closing_costs = st.sidebar.number_input("Closing Costs ($)", value=2500)
+repairs = st.sidebar.number_input("Repair Costs ($)", value=2000)
+down_payment = st.sidebar.number_input("Down Payment ($)", value=40000)
+loan_interest = st.sidebar.number_input("Loan Interest Rate (%)", value=4.99)
+loan_years = st.sidebar.slider("Loan Term (years)", 5, 40, 30)
+
+st.sidebar.header("💵 Income and Expenses")
+rent = st.sidebar.number_input("Monthly Rent ($)", value=2600)
+vacancy_rate = st.sidebar.slider("Vacancy Rate (%)", 0, 100, 7)
+repairs_pct = st.sidebar.slider("Repairs (% of rent)", 0, 100, 5)
+capex_pct = st.sidebar.slider("CapEx (% of rent)", 0, 100, 5)
+insurance = st.sidebar.number_input("Insurance ($/mo)", value=85)
+management_pct = st.sidebar.slider("Management (% of rent)", 0, 100, 8)
+taxes = st.sidebar.number_input("Property Taxes ($/mo)", value=508)
+
+# Calculations
+loan_amount = purchase_price - down_payment
+monthly_rate = loan_interest / 100 / 12
+num_payments = loan_years * 12
+monthly_pi = loan_amount * monthly_rate / (1 - (1 + monthly_rate) ** -num_payments)
+
+total_monthly_income = rent
+vacancy = rent * (vacancy_rate / 100)
+repairs = rent * (repairs_pct / 100)
+capex = rent * (capex_pct / 100)
+management = rent * (management_pct / 100)
+
+total_expenses = vacancy + repairs + capex + insurance + management + taxes + monthly_pi
+cash_flow = total_monthly_income - total_expenses
+
+noi = (rent - vacancy - repairs - capex - insurance - management - taxes) * 12
+cap_rate = (noi / purchase_price) * 100
+cash_needed = down_payment + closing_costs + repairs
+cash_on_cash = (cash_flow * 12 / cash_needed) * 100
+
+df = pd.DataFrame({
+    "Metric": ["Monthly Income", "Monthly Expenses", "Monthly Cash Flow", "Cap Rate", "NOI", "Cash Needed", "Cash-on-Cash ROI"],
+    "Value": [f"${total_monthly_income:,.2f}", f"${total_expenses:,.2f}", f"${cash_flow:,.2f}", f"{cap_rate:.2f}%", f"${noi:,.2f}", f"${cash_needed:,.2f}", f"{cash_on_cash:.2f}%"]
+})
+
+# Display metrics
+st.subheader("📊 Summary")
+st.dataframe(df, use_container_width=True)
+
+# Graph: Cash flow over time
+years = np.arange(1, 31)
+property_value = purchase_price * (1.03 ** years)
+expenses = total_expenses * 12 * (1.02 ** years)
+income = total_monthly_income * 12 * (1.02 ** years)
+cashflow_over_time = income - expenses
+
+fig, ax = plt.subplots()
+ax.plot(years, cashflow_over_time, label="Annual Cash Flow")
+ax.set_title("Projected Cash Flow Over 30 Years")
+ax.set_xlabel("Year")
+ax.set_ylabel("Annual Cash Flow ($)")
+ax.legend()
+st.pyplot(fig)
+
+st.caption("Calculations are estimates and do not constitute financial advice.")
